@@ -21,7 +21,9 @@ public class GameView extends TextureView implements TextureView.SurfaceTextureL
      */
 
     private Thread mThread;
-    private ArrayList<Block> mBlockList;
+    private ArrayList<DrawableItem> mBlockList;
+    private Pad mPad;
+    private float mPadHalfWidth;
     volatile private boolean mIsRunnable;
     volatile private float mTouchedX;
     volatile private float mTouchedY;
@@ -40,16 +42,26 @@ public class GameView extends TextureView implements TextureView.SurfaceTextureL
                 paint.setStyle(Paint.Style.FILL);
                 paint.setColor(Color.BLUE);
 
-                while(mIsRunnable){
-                    Canvas canvas = lockCanvas();
-                    if(canvas == null){
-                        continue;
+                while(true){
+                    synchronized (GameView.this) {
+                        if(!mIsRunnable){
+                            break;
+                        }
+                        Canvas canvas = lockCanvas();
+                        if (canvas == null) {
+                            continue;
+                        }
+                        canvas.drawColor(Color.BLACK);
+
+                        float padLeft = mTouchedX - mPadHalfWidth;
+                        float padRight = mTouchedX + mPadHalfWidth;
+                        mPad.setLeftRight(padLeft,padRight);
+
+                        for (DrawableItem item : mBlockList) {
+                            item.draw(canvas, paint);
+                        }
+                        unlockCanvasAndPost(canvas);
                     }
-                    canvas.drawColor(Color.BLACK);
-                    for(Block item : mBlockList){
-                        item.draw(canvas, paint);
-                    }
-                    unlockCanvasAndPost(canvas);
                 }
             }
         });
@@ -63,9 +75,13 @@ public class GameView extends TextureView implements TextureView.SurfaceTextureL
     }
 
     public void readyObjects(int width, int height){
+
+        mPad = new Pad(height * 0.8f, height * 0.85f);
+        mPadHalfWidth = width / 10;
+
         float blockWidth = width / 10;
         float blockHeight = height / 20;
-        mBlockList = new ArrayList<Block>();
+        mBlockList = new ArrayList<DrawableItem>();
         for(int i = 0 ; i < 100 ; i++){
             float blockTop = i / 10 * blockHeight;
             float blockLeft = i % 10 * blockWidth;
@@ -73,6 +89,7 @@ public class GameView extends TextureView implements TextureView.SurfaceTextureL
             float blockRight = blockLeft + blockWidth;
             mBlockList.add(new Block(blockTop,blockLeft,blockBottom,blockRight));
         }
+        mBlockList.add(mPad);
 
     }
 
@@ -88,8 +105,11 @@ public class GameView extends TextureView implements TextureView.SurfaceTextureL
     }
 
     @Override
-    public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-        return true;
+    public boolean onSurfaceTextureDestroyed(SurfaceTexture surface)
+    {
+        synchronized (this) {
+            return true;
+        }
     }
 
     @Override

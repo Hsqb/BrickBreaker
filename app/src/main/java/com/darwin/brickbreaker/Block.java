@@ -7,7 +7,7 @@ import android.graphics.Paint;
 /**
  * Created by HHAN on 2016. 5. 11..
  */
-public class Block {
+public class Block implements DrawableItem {
     private final float mTop;
     private final float mLeft;
     private final float mBottom;
